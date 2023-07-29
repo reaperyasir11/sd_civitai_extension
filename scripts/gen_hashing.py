@@ -70,8 +70,8 @@ def add_resource_hashes(params):
         if f'lora:{name}' in resource_hashes.keys():
             continue
 
-        lora_on_disk = item.lora_on_disk if item.lora_on_disk is not None else None
-        if not lora_on_disk:
+        lora_on_disk = item.lora_on_disk if hasattr(item, "lora_on_disk") else item.network_on_disk if hasattr(item, "network_on_disk") else None
+        if lora_on_disk is None:
             continue
 
         hash = hashes.sha256(lora_on_disk.filename, "lora/" + lora_on_disk.name)
