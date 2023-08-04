@@ -3,7 +3,7 @@ import re
 import os
 
 import civitai.lib as civitai
-from modules import script_callbacks, sd_vae, shared
+from modules import script_callbacks, sd_vae, shared, hashes
 
 additional_network_type_map = {
     'lora': 'LORA',
@@ -14,6 +14,8 @@ model_hash_pattern = r'Model hash: ([0-9a-fA-F]{10})'
 
 # Automatically pull model with corresponding hash from Civitai
 def add_resource_hashes(params):
+    import lora
+
     if 'parameters' not in params.pnginfo: return
 
     hashify_resources = shared.opts.data.get('civitai_hashify_resources', True)
@@ -61,6 +63,24 @@ def add_resource_hashes(params):
         if len(matching_resource) > 0:
             short_hash = matching_resource[0]['hash'][:10]
             resource_hashes[f'{network_type}:{network_name}'] = short_hash
+
+    # check loaded_loras
+    for item in lora.loaded_loras:
+        name = item.name
+        if f'lora:{name}' in resource_hashes.keys():
+            continue
+
+        lora_on_disk = item.lora_on_disk if hasattr(item, "lora_on_disk") else item.network_on_disk if hasattr(item, "network_on_disk") else None
+        if lora_on_disk is None:
+            continue
+
+        hash = hashes.sha256(lora_on_disk.filename, "lora/" + lora_on_disk.name)
+        if not hash:
+            continue
+        short_hash = hash[0:10]
+
+        name = name.replace(":", "").replace(",", "")
+        resource_hashes[f'lora:{name}'] = short_hash
 
     # Check for model hash in generation parameters
     model_match = re.search(model_hash_pattern, generation_params)
